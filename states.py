@@ -11,7 +11,6 @@ class Registration(StatesGroup):
 
 # Процессы для Выбора определенного товара
 class GetProduct(StatesGroup):
-    getting_pr_name = State()
     getting_pr_count = State()
 
 

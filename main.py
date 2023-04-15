@@ -3,19 +3,29 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from states import Registration
 import buttons
+import database
 
 
-bot = Bot('Token')
+bot = Bot('5871305426:AAEoSBdVM7_OfSL3Ea33AiYeq8lGp26O0f4')
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 @dp.message_handler(commands=['start'])
 async def start_message(message):
 
-    await message.answer('Привет, я бот для доставки\nОтправь имя для регистрации')
+    # Получить user_id пользователя
+    user_id = message.from_user.id
+    # Происходит проверка в базе
+    checker = database.check_user(user_id)
 
-    # Переход на этап получения имени
-    await Registration.getting_name_state.set()
+    if checker: # Если пользователь есть в базе то отправим главное меню
+        await message.answer('Выбери продукт', reply_markup=buttons.products_kb())
+
+    else:
+        await message.answer('Привет, я бот для доставки\nОтправь имя для регистрации')
+
+        # Переход на этап получения имени
+        await Registration.getting_name_state.set()
 
 
 # Этап получения имени
@@ -66,14 +76,54 @@ async def get_location(message, state=Registration.getting_location):
 
 # Этап получения пола
 @dp.message_handler(state=Registration.getting_gender)
-async def get_location(message, state=Registration.getting_gender):
+async def get_gender(message, state=Registration.getting_gender):
     # Получаем пол
     user_answer = message.text
 
     await message.answer('Успешно зарегистрирован', reply_markup=buttons.gender_kb())
 
+    # Сохраняем пользователя в базу
+    all_info = await state.get_data()
+    name = all_info.get('name')
+    phone_number = all_info.get('number')
+    latitude = all_info.get('latitude')
+    longitude = all_info.get('longitude')
+    gender = user_answer
+    user_id = message.from_user.id
+
+    database.add_user(user_id, name, phone_number, latitude, longitude, gender)
+    print(database.get_users())
+
     # Остановка
     await state.finish()
+
+
+# Независимый обработчик текста для основного меню
+@dp.message_handler(content_types=['text'])
+async def text_messages(message):
+    user_answer = message.text
+
+    # Актуальный список продуктов
+    actual_products = [i[0] for i in database.get_name_product()]
+
+    # Проверка на какую кнопку нажал пользователь
+    if user_answer == 'Корзина':
+        await message.answer('Ваша корзина')
+
+    elif user_answer == 'Оформить заказ':
+        await message.answer('Оформляем заказ')
+
+    # А если отправленное сообщение - это продукт
+    elif user_answer in actual_products:
+        await message.answer('Выберите количество', reply_markup=buttons.product_count())
+        # ДЗ ## Прописать процесс выбора количества
+        # Перекинуть на этап получения количества продукта
+        # Создать обработчик для сохранения выбранного количества
+
+    else:
+        await message.answer('Выберите продукт из списка', reply_markup=buttons.products_kb())
+
+
 
 
 executor.start_polling(dp)

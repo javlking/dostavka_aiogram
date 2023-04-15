@@ -1,5 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+import database
+
 
 # Кнопка для отправки номера телефона
 def phone_number_kb():
@@ -89,7 +91,24 @@ def confirmation_kb():
 
 # Кнопки с названиями товаров
 def products_kb():
-    pass
+    kb = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+
+    cart = KeyboardButton('Корзина')
+    zakaz = KeyboardButton('Оформить заказ')
+
+    # Получаем все названия продуктов из базы
+    all_products = database.get_name_product()
+
+    # Генерируем список кнопок с названиями продуктов
+    buttons = [KeyboardButton(i[0]) for i in all_products]
+
+    # Добавляем в пространство
+    kb.add(cart, zakaz)
+    kb.add(*buttons)
+
+    return kb
+
+
 
 
 
