@@ -193,7 +193,7 @@ async def cart_function(message, state=Cart.waiting_for_product):
             # Отправка админу
             await bot.send_message(295612129, admin_message)
             # Очистим корзину пользователя
-            database.delete_from_cart(user_id)`
+            database.delete_from_cart(user_id)
 
 
 executor.start_polling(dp)
