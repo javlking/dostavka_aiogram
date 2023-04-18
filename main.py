@@ -1,7 +1,7 @@
 from aiogram import Dispatcher, executor, Bot
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-from states import Registration, GetProduct
+from states import Registration, GetProduct, Cart
 import buttons
 import database
 
@@ -108,7 +108,23 @@ async def text_messages(message):
 
     # Проверка на какую кнопку нажал пользователь
     if user_answer == 'Корзина':
-        await message.answer('Ваша корзина')
+        # Получить из базы корзину пользователя
+        user_cart = database.get_user_cart(message.from_user.id)
+
+        # Проверка есть ли вообще что-то в базе
+        if user_cart:
+            # Формируем сообщение
+            result_answer = 'Ваша корзина:\n'
+
+            for i in user_cart:
+                result_answer += f'Продукт: {i[1]}: {i[-1]} шт\n'
+
+            await message.answer(result_answer, reply_markup=buttons.cart_kb())
+
+            await Cart.waiting_for_product.set()
+
+        else:
+            await message.answer('Ваша корзина пустая')
 
     elif user_answer == 'Оформить заказ':
         await message.answer('Оформляем заказ')
@@ -132,10 +148,52 @@ async def text_messages(message):
 async def get_pr_count(message, state=GetProduct.getting_pr_count):
     product_count = message.text
 
+    user_data = await state.get_data()
+    user_product = user_data.get('user_product')
+
+    # Сохранить в базе
+    database.add_product_to_cart(message.from_user.id, user_product, int(product_count))
+
     await message.answer('Продукт добавлен\nМожет что-то еще?', reply_markup=buttons.products_kb())
     await state.finish()
 
 
+# Обработчик действий в корзине
+@dp.message_handler(state=Cart.waiting_for_product)
+async def cart_function(message, state=Cart.waiting_for_product):
+    user_answer = message.text
+    user_id = message.from_user.id
+
+    # Проверка на то что было выбрано
+    if user_answer == 'Очистить':
+        # Очищаем корзину из базы (для конкретного пользователя)
+        database.delete_from_cart(user_id)
+
+        await message.answer('Корзина очищена')
+
+    elif user_answer == 'Оформить заказ':
+        # Получить из базы корзину пользователя
+        user_cart = database.get_user_cart(message.from_user.id)
+
+        # Проверка есть ли вообще что-то в базе
+        if user_cart:
+            # Формируем сообщение
+            result_answer = 'Ваш заказ:\n'
+            admin_message = 'Новый заказ:\n'
+
+            for i in user_cart:
+                result_answer += f'Продукт: {i[1]}: {i[-1]} шт\n'
+                admin_message += f'Продукт: {i[1]}: {i[-1]} шт\n'
+
+            # Отправка пользователю
+            await message.answer(result_answer, reply_markup=buttons.products_kb())
+            await message.answer('Успешно оформлен')
+            await state.finish()
+
+            # Отправка админу
+            await bot.send_message(295612129, admin_message)
+            # Очистим корзину пользователя
+            database.delete_from_cart(user_id)`
 
 
 executor.start_polling(dp)
