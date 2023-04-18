@@ -112,9 +112,43 @@ def check_user(user_id):
 ## Дз ##
 # Создать таблицу корзины
 # Колонки: user_id, product_name, product_count
+# sql.execute('CREATE TABLE cart (user_id INTEGER, product_name TEXT, product_count INTEGER);')
+
 
 # Создать функцию добавления user_id, product_name, product_count в корзину
-# Создать функцию получения корзины (WHERE user_id=?)
-# Создать функцию удаления корзины (WHERE user_id=?)
+def add_product_to_cart(user_id, product_name, product_count):
+    # Создать/подключиться к базе данных
+    connection = sqlite3.connect('dostavka.db')
+    # Создаем переводчика
+    sql = connection.cursor()
 
+    sql.execute('INSERT INTO cart VALUES (?,?,?);', (user_id, product_name, product_count))
+
+    # Зафиксировать
+    connection.commit()
+
+
+# Создать функцию получения корзины (WHERE user_id=?)
+def get_user_cart(user_id):
+    # Создать/подключиться к базе данных
+    connection = sqlite3.connect('dostavka.db')
+    # Создаем переводчика
+    sql = connection.cursor()
+
+    all_products_from_cart = sql.execute('SELECT * FROM cart WHERE user_id=?;', (user_id,))
+
+    return all_products_from_cart.fetchall()
+
+
+# Создать функцию удаления корзины (WHERE user_id=?)
+def delete_from_cart(user_id):
+    # Создать/подключиться к базе данных
+    connection = sqlite3.connect('dostavka.db')
+    # Создаем переводчика
+    sql = connection.cursor()
+
+    sql.execute('DELETE FROM cart WHERE user_id=?;', (user_id,))
+
+    # Зафиксировать
+    connection.commit()
 

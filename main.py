@@ -1,7 +1,7 @@
 from aiogram import Dispatcher, executor, Bot
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-from states import Registration
+from states import Registration, GetProduct
 import buttons
 import database
 
@@ -116,12 +116,24 @@ async def text_messages(message):
     # А если отправленное сообщение - это продукт
     elif user_answer in actual_products:
         await message.answer('Выберите количество', reply_markup=buttons.product_count())
-        # ДЗ ## Прописать процесс выбора количества
+
+        # Сохранить ввод пользователя без state
+        await dp.current_state(user=message.from_user.id).update_data(user_product=message.text)
+
         # Перекинуть на этап получения количества продукта
-        # Создать обработчик для сохранения выбранного количества
+        await GetProduct.getting_pr_count.set()
 
     else:
         await message.answer('Выберите продукт из списка', reply_markup=buttons.products_kb())
+
+
+# Обработчик для получения количества продукта
+@dp.message_handler(state=GetProduct.getting_pr_count)
+async def get_pr_count(message, state=GetProduct.getting_pr_count):
+    product_count = message.text
+
+    await message.answer('Продукт добавлен\nМожет что-то еще?', reply_markup=buttons.products_kb())
+    await state.finish()
 
 
 
